@@ -9,7 +9,9 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
 //Defines
-
+#define BUTTON_ONE_LED 1
+#define BUTTON_ONE_SWITCH 3
+#define BUTTON_TWO_LED 2
 //Global Variables
 WiFiEventHandler gotIpEventHandler;
 uint8_t wpsAnimationCycle;
@@ -34,8 +36,8 @@ void wps_connect() {
 
   //Animation variables
   uint8_t maxAnimationCycles = 10;
-  int maxAnimationKeyframes = 5000; //explanation: 0 - 4000 first, 1000 - 5000 second
-  int animationOffset = 350;
+  int maxAnimationKeyframes = 6000; //explanation: 0 - 4000 first, 1000 - 5000 second
+  int animationOffset = 1000;
   int animationLength = maxAnimationKeyframes - animationOffset;
 
   gotIpEventHandler = WiFi.onStationModeGotIP([maxAnimationCycles, maxAnimationKeyframes](const WiFiEventStationModeGotIP& event)
@@ -46,8 +48,8 @@ void wps_connect() {
 
   for (wpsAnimationCycle = 0; wpsAnimationCycle < maxAnimationCycles; wpsAnimationCycle++) {
     for (wpsAnimationKeyframe = 0; wpsAnimationKeyframe < maxAnimationKeyframes; wpsAnimationKeyframe++) {
-      analogWrite(1, 1023 - find_bell_curve(animationLength, constrain(wpsAnimationKeyframe, 0, animationLength))); //between 0 - 4000
-      analogWrite(2, 1023 - find_bell_curve(animationLength, (constrain((wpsAnimationKeyframe - animationOffset), 0, animationLength)))); //between 1000 - 4000
+      analogWrite(BUTTON_ONE_LED, 1023 - find_bell_curve(animationLength, constrain(wpsAnimationKeyframe, 0, animationLength))); //between 0 - 4000
+      analogWrite(BUTTON_TWO_LED, 1023 - find_bell_curve(animationLength, (constrain((wpsAnimationKeyframe - animationOffset), 0, animationLength)))); //between 1000 - 4000
       ESP.wdtFeed(); //Important so it doesn't crash during this loop
     }
   }
@@ -56,37 +58,39 @@ void wps_connect() {
 void setup() {
   // pinmodes
   pinMode(0, OUTPUT); //boot
-  pinMode(1, OUTPUT); //transmit, builtin LED
-  pinMode(2, OUTPUT); //nothing special
-  pinMode(3, INPUT); //recieve, only input that can be driven during boot
-  analogWrite(1, 1023);
-  analogWrite(2, 1023);
+  pinMode(BUTTON_ONE_LED, OUTPUT); //transmit, builtin LED
+  pinMode(BUTTON_TWO_LED, OUTPUT); //nothing special
+  pinMode(BUTTON_ONE_SWITCH, INPUT); //recieve, only input that can be driven during boot
+  analogWrite(BUTTON_ONE_LED, 1023);
+  analogWrite(BUTTON_TWO_LED, 1023);
   
   //reset detection
   
   while (millis() < 5000) {
     ESP.wdtFeed();
-    analogWrite(1, 1023);
+    analogWrite(BUTTON_ONE_LED, 1023);
     //inside of here is within the first 5 seconds
     uint16_t savedTime = millis();
-    while (digitalRead(3) == LOW) {
+    while (digitalRead(BUTTON_ONE_SWITCH) == LOW) {
       ESP.wdtFeed();
-      analogWrite(1, 128); //quarter brightness
+      analogWrite(BUTTON_ONE_LED, 128); //quarter brightness
       if ((millis() - savedTime) > 5000) {
         //boom! reset time
         while (true) {
+          int maxKeyframes = 1500;
+          int doubleMaxKeyframes = maxKeyframes * 2;
+          for (int i = 0; i < maxKeyframes; i++) {
+            analogWrite(BUTTON_ONE_LED, find_bell_curve(doubleMaxKeyframes, (i + maxKeyframes))); //descending
+            analogWrite(BUTTON_TWO_LED, find_bell_curve(doubleMaxKeyframes, i)); //ascending
+          }
+          //ESP.wdtFeed();
+          delay(63);
+          for (int i = 0; i < maxKeyframes; i++) {
+            analogWrite(BUTTON_ONE_LED, find_bell_curve(doubleMaxKeyframes, i)); //ascending
+            analogWrite(BUTTON_TWO_LED, find_bell_curve(doubleMaxKeyframes, (i + maxKeyframes))); //descending
+          }
           ESP.wdtFeed();
-          int maxKeyframes = 50000;
-          for (int i = 0; i < maxKeyframes; i++) {
-            analogWrite(1, 1023 - find_linear(maxKeyframes, i));
-            analogWrite(2, find_linear(maxKeyframes, i));
-          }
-          delay(250);
-          for (int i = 0; i < maxKeyframes; i++) {
-            analogWrite(1, find_linear(maxKeyframes, i));
-            analogWrite(2, 1023 - find_linear(maxKeyframes, i));
-          }
-          delay(250);
+          delay(63);
           /*
           int maxAnimationKeyframes = 6000;
           int animationOffset = 1000;
@@ -103,7 +107,7 @@ void setup() {
     }
   }
   
-  analogWrite(1, 512); //no more reset check, half brightness
+  analogWrite(BUTTON_ONE_LED, 512); //no more reset check, half brightness
   
   //meta configuration
   wifi_station_set_hostname("Lightswitch");
@@ -122,6 +126,6 @@ void loop() {
   for (int i = 0; i < maxsteps; i++)
   {
     int flippedcurve = 1023 - find_bell_curve(maxsteps, i);
-    analogWrite(2, flippedcurve);
+    analogWrite(BUTTON_TWO_LED, flippedcurve);
   }
 }
