@@ -22,6 +22,12 @@ uint16_t find_bell_curve(float total, float index)
     return (pow(1.085, exponent) * 1023);
 }
 
+int find_linear(float total, float index)
+{
+    float amount = index / total;
+    return (1023.0 * amount);
+}
+
 void wps_connect() {
 
   bool wpsVariable = WiFi.beginWPSConfig();
@@ -51,11 +57,56 @@ void setup() {
   // pinmodes
   pinMode(0, OUTPUT); //boot
   pinMode(1, OUTPUT); //transmit, builtin LED
-  pinMode(2, OUTPUT); //
-  pinMode(3, OUTPUT); //recieve
-  wifi_station_set_hostname("Lightswitch");
+  pinMode(2, OUTPUT); //nothing special
+  pinMode(3, INPUT); //recieve, only input that can be driven during boot
   analogWrite(1, 1023);
   analogWrite(2, 1023);
+  
+  //reset detection
+  
+  while (millis() < 5000) {
+    ESP.wdtFeed();
+    analogWrite(1, 1023);
+    //inside of here is within the first 5 seconds
+    uint16_t savedTime = millis();
+    while (digitalRead(3) == LOW) {
+      ESP.wdtFeed();
+      analogWrite(1, 128); //quarter brightness
+      if ((millis() - savedTime) > 5000) {
+        //boom! reset time
+        while (true) {
+          ESP.wdtFeed();
+          int maxKeyframes = 50000;
+          for (int i = 0; i < maxKeyframes; i++) {
+            analogWrite(1, 1023 - find_linear(maxKeyframes, i));
+            analogWrite(2, find_linear(maxKeyframes, i));
+          }
+          delay(250);
+          for (int i = 0; i < maxKeyframes; i++) {
+            analogWrite(1, find_linear(maxKeyframes, i));
+            analogWrite(2, 1023 - find_linear(maxKeyframes, i));
+          }
+          delay(250);
+          /*
+          int maxAnimationKeyframes = 6000;
+          int animationOffset = 1000;
+          int animationLength = maxAnimationKeyframes - animationOffset;
+          
+          for (int animationKeyframe = 0; animationKeyframe < maxAnimationKeyframes; animationKeyframe++) {
+            analogWrite(1, find_bell_curve(animationLength, constrain(animationKeyframe, 0, animationLength))); //between 0 - 4000
+            analogWrite(2, find_bell_curve(animationLength, (constrain((animationKeyframe - animationOffset), 0, animationLength)))); //between 1000 - 4000
+            ESP.wdtFeed(); //Important so it doesn't crash during this loop
+          }
+          */
+        }
+      }
+    }
+  }
+  
+  analogWrite(1, 512); //no more reset check, half brightness
+  
+  //meta configuration
+  wifi_station_set_hostname("Lightswitch");
   // WPS works in STA (Station mode) only.
   WiFi.mode(WIFI_STA);
   delay(1000);
