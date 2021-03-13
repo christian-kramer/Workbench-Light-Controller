@@ -52,8 +52,24 @@ void railroad_flash(int requestedAnimationCycles = 1) {
   }
 }
 
-bool getEnterCondition() {
-  return !digitalRead(BUTTON_ONE_SWITCH);
+void success_flash(int requestedAnimationCycles = 1) {
+  int maxKeyframes = 1500;
+  for (int animationCycles = 0; animationCycles < requestedAnimationCycles; animationCycles++) {
+    for (int i = 0; i < maxKeyframes; i++) {
+      ESP.wdtFeed();
+      analogWrite(BUTTON_ONE_LED, find_bell_curve(maxKeyframes, i));
+      analogWrite(BUTTON_TWO_LED, find_bell_curve(maxKeyframes, i));
+    }
+  }
+}
+
+void error_flash() {
+  digitalWrite(BUTTON_ONE_LED, HIGH);
+  digitalWrite(BUTTON_TWO_LED, HIGH);
+  delay(250);
+  digitalWrite(BUTTON_ONE_LED, LOW);
+  digitalWrite(BUTTON_TWO_LED, LOW);
+  delay(250);
 }
 
 bool wps_connect() {
@@ -73,6 +89,13 @@ bool wps_connect() {
 }
 
 
+bool get_button_state(uint8_t buttonID, uint8_t ledID) {
+  bool button_state = !digitalRead(buttonID);
+  analogWrite(ledID, button_state * 512);
+  return button_state;
+}
+
+
 
 void setup() {
   //pinmodes
@@ -85,21 +108,23 @@ void setup() {
   
   // WPS works in STA (Station mode) only. One must connect to WPS after instantiating STA
   WiFi.mode(WIFI_STA);
+  delay(1000);
 
-  rolling_flash(2);
+  //rolling_flash(5);
 
   bool enteredWPSMode = false;
   
   //insert alternate startup mode code here
-  while (millis() < 5000) {
+  while (millis() < 10000) {
     ESP.wdtFeed();
     /*
     analogWrite(BUTTON_ONE_LED, constrain((1023 * digitalRead(BUTTON_ONE_SWITCH)) + 128, 0, 1023));
     analogWrite(BUTTON_TWO_LED, constrain((1023 * digitalRead(BUTTON_ONE_SWITCH)) + 128, 0, 1023));
     */
-    analogWrite(BUTTON_ONE_LED, !digitalRead(BUTTON_ONE_SWITCH) * 128);
+    //bool button_one_state = !digitalRead(BUTTON_ONE_SWITCH);
+    //analogWrite(BUTTON_ONE_LED, button_one_state * 128);
     unsigned long modeEnterTime = millis();
-    while(getEnterCondition()) {
+    while(get_button_state(BUTTON_ONE_SWITCH, BUTTON_ONE_LED)) {
       ESP.wdtFeed();
       if (millis() > (modeEnterTime + 5000)) {
         enteredWPSMode = true;
@@ -109,8 +134,12 @@ void setup() {
         
         if (wps_connect()){
           //insert "success flash" here
+          success_flash(2);
         } else {
-          analogWrite(BUTTON_TWO_LED, 128);
+          while(true) {
+            ESP.wdtFeed();
+            error_flash();
+          }
         }
       }
     }
@@ -119,7 +148,15 @@ void setup() {
 
   if (!enteredWPSMode) {
     WiFi.begin("","");
-    rolling_flash(8);
+    delay(4000);
+    if (WiFi.status() == WL_CONNECTED) {
+      success_flash(2);
+    } else {
+      while(true) {
+        ESP.wdtFeed();
+        error_flash();
+      }      
+    }
   }
   
   //MDNS Setup
