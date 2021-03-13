@@ -39,14 +39,14 @@ void railroad_flash(int requestedAnimationCycles = 1) {
     for (int i = 0; i < maxKeyframes; i++) {
       analogWrite(BUTTON_ONE_LED, find_bell_curve(doubleMaxKeyframes, (i + maxKeyframes))); //descending
       analogWrite(BUTTON_TWO_LED, find_bell_curve(doubleMaxKeyframes, i)); //ascending
+      yield();
     }
-    ESP.wdtFeed();
     delay(63);
     for (int i = 0; i < maxKeyframes; i++) {
       analogWrite(BUTTON_ONE_LED, find_bell_curve(doubleMaxKeyframes, i)); //ascending
       analogWrite(BUTTON_TWO_LED, find_bell_curve(doubleMaxKeyframes, (i + maxKeyframes))); //descending
+      yield();
     }
-    ESP.wdtFeed();
     delay(63);
   }
 }
@@ -55,9 +55,9 @@ void success_flash(int requestedAnimationCycles = 1) {
   int maxKeyframes = 1500;
   for (int animationCycles = 0; animationCycles < requestedAnimationCycles; animationCycles++) {
     for (int i = 0; i < maxKeyframes; i++) {
-      ESP.wdtFeed();
       analogWrite(BUTTON_ONE_LED, find_bell_curve(maxKeyframes, i));
       analogWrite(BUTTON_TWO_LED, find_bell_curve(maxKeyframes, i));
+      yield();
     }
   }
 }
@@ -118,7 +118,18 @@ void setup() {
       ESP.wdtFeed();
       if (millis() > (modeEnterTime + 5000)) {
         enteredWPSMode = true;
-        
+        rolling_flash();
+        analogWrite(BUTTON_ONE_LED, 128);
+        analogWrite(BUTTON_TWO_LED, 128);
+        WiFi.beginWPSConfig(); //this blocks
+        int maxFlashes = 30;
+        for (int i = 0; i < maxFlashes; i++) {
+          railroad_flash();
+          if (WiFi.status() == WL_CONNECTED) {
+            i = maxFlashes;
+          }
+        }
+        /*
         railroad_flash(5);
         rolling_flash();
         
@@ -130,6 +141,7 @@ void setup() {
             error_flash();
           }
         }
+        */
       }
     }
   }
@@ -140,15 +152,15 @@ void setup() {
     while (WiFi.status() != WL_CONNECTED) {
       rolling_flash();
     }
-    
-    if (WiFi.status() == WL_CONNECTED) {
-      success_flash(2);
-    } else {
-      while(true) {
-        ESP.wdtFeed();
-        error_flash();
-      }      
-    }
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    success_flash(2);
+  } else {
+    while(true) {
+      ESP.wdtFeed();
+      error_flash();
+    }      
   }
   
   //MDNS Setup
