@@ -1,6 +1,7 @@
 //Includes
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
+#include <ESP8266WebServer.h>
 
 
 //Defines
@@ -10,8 +11,7 @@
 #define WPS_WAIT 10000
 
 //Global Variables
-WiFiEventHandler gotIpEventHandler;
-int wpsCountdown;
+ESP8266WebServer server(80);
 
 uint16_t find_bell_curve(float total, float index)
 {
@@ -71,22 +71,6 @@ void error_flash() {
   delay(250);
 }
 
-bool wps_connect() {
-
-  bool wpsVariable = WiFi.beginWPSConfig();
-
-  gotIpEventHandler = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& event)
-  {
-    wpsCountdown = WPS_WAIT;
-  });
-
-  for (wpsCountdown = 0; wpsCountdown < WPS_WAIT; wpsCountdown++) {
-    delay(1);
-  }
-
-  return (WiFi.status() == WL_CONNECTED);
-}
-
 
 bool get_button_state(uint8_t buttonID, uint8_t ledID) {
   bool button_state = !digitalRead(buttonID);
@@ -118,6 +102,7 @@ void setup() {
       ESP.wdtFeed();
       if (millis() > (modeEnterTime + 5000)) {
         enteredWPSMode = true;
+        railroad_flash(5);
         rolling_flash();
         analogWrite(BUTTON_ONE_LED, 128);
         analogWrite(BUTTON_TWO_LED, 128);
@@ -129,19 +114,6 @@ void setup() {
             i = maxFlashes;
           }
         }
-        /*
-        railroad_flash(5);
-        rolling_flash();
-        
-        if (wps_connect()){
-          success_flash(2);
-        } else {
-          while(true) {
-            ESP.wdtFeed();
-            error_flash();
-          }
-        }
-        */
       }
     }
   }
@@ -158,7 +130,7 @@ void setup() {
     success_flash(2);
   } else {
     while(true) {
-      ESP.wdtFeed();
+      ESP.wdtFeed(); //is this needed? try taking out
       error_flash();
     }      
   }
@@ -169,10 +141,48 @@ void setup() {
   } else {
     Serial.println("Error setting up MDNS responder!");
   }
+  
+  //Web Server Setup
+  server.on("/", handleRoot);
+  server.on("/api/devices", handleDevices);
+  server.on("/api/credentials", handleCredentials);
+  server.onNotFound(handleNotFound);
+  server.begin();
+
 }
 
 
 void loop() {
-  //eee
+  server.handleClient();
   MDNS.update();
+}
+
+//web server functions
+void handleDevices() {
+  if (server.hasArg("plain") == false) {
+    server.send(200, "text/html", "devices page without body");  
+  } else {
+    String message = "devices page with body: ";
+    message += server.arg("plain");
+    server.send(200, "text/html", message);  
+  }
+}
+
+void handleCredentials() {
+  if (server.hasArg("plain") == false) {
+    server.send(200, "text/html", "credentials page without body");  
+  } else {
+    String message = "credentials page with body: ";
+    message += server.arg("plain");
+    server.send(200, "text/html", message);  
+  }
+}
+
+void handleRoot() {
+  //At its core, this should work as a single-page web app. Remember KISS: Keep It Simple, Stupid! No scope creep.
+  server.send(200, "text/html", "root page");
+}
+
+void handleNotFound() {
+  server.send(404, "text/html", "404 page");
 }
