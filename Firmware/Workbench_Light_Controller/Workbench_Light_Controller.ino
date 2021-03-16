@@ -2,6 +2,11 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266WebServer.h>
+#include <ESP8266HTTPClient.h>
+#include <WiFiClientSecureBearSSL.h>
+#include <FS.h>
+#include <MD5Builder.h>
+//#include <ArduinoJson.h>
 
 
 //Defines
@@ -11,7 +16,33 @@
 #define WPS_WAIT 10000
 
 //Global Variables
+MD5Builder _md5;
 ESP8266WebServer server(80);
+
+String md5(String str) {
+  _md5.begin();
+  _md5.add(String(str));
+  _md5.calculate();
+  return _md5.toString();
+}
+
+bool vesyncLogin(String username, String password) {
+  String baseJSON = R"({"account": "<email>", "devToken": "", "password": "<password>"})";
+  baseJSON.replace("<email>", username);
+  baseJSON.replace("<password>", md5(password));
+  
+  std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
+  secureClient->setInsecure();
+  HTTPClient http;
+  http.begin(*secureClient, "https://smartapi.vesync.com/vold/user/login");
+  http.addHeader("Content-Type", "application/json");
+  http.POST(baseJSON);
+  if (http.getString().indexOf("error") > 0) {
+    return false;
+  } else {
+    return true;
+  } 
+}
 
 uint16_t find_bell_curve(float total, float index)
 {
@@ -103,7 +134,6 @@ void setup() {
       if (millis() > (modeEnterTime + 5000)) {
         enteredWPSMode = true;
         railroad_flash(5);
-        rolling_flash();
         analogWrite(BUTTON_ONE_LED, 128);
         analogWrite(BUTTON_TWO_LED, 128);
         WiFi.beginWPSConfig(); //this blocks
@@ -134,6 +164,9 @@ void setup() {
       error_flash();
     }      
   }
+
+  //FS Setup
+  SPIFFS.begin();
   
   //MDNS Setup
   if (MDNS.begin("esp8266test")) {              // Start the mDNS responder for esp8266test.local
@@ -164,7 +197,7 @@ void handleDevices() {
   } else {
     String message = "devices page with body: ";
     message += server.arg("plain");
-    server.send(200, "text/html", message);  
+    server.send(200, "text/html", message);
   }
 }
 
@@ -172,9 +205,26 @@ void handleCredentials() {
   if (server.hasArg("plain") == false) {
     server.send(200, "text/html", "credentials page without body");  
   } else {
-    String message = "credentials page with body: ";
-    message += server.arg("plain");
-    server.send(200, "text/html", message);  
+    if (vesyncLogin(server.arg("username"), server.arg("password"))) {
+      server.send(200, "text/html", "successfully logged into vesync");  
+    } else {
+      
+      String baseJSON = R"({"account": "<email>", "devToken": "", "password": "<password>"})";
+      baseJSON.replace("<email>", server.arg("username"));
+      baseJSON.replace("<password>", md5(server.arg("password")));
+      
+      server.send(200, "text/html", baseJSON);
+    }
+    /*
+    if (SPIFFS.exists("credentials.txt")) {
+      server.send(409, "text/html", "Valid credentials already exist, please reset."); 
+    } else {
+      File f = SPIFFS.open("credentials.txt", "a");
+      f.println("yeet");
+      f.close();
+      server.send(200, "text/html", "Successfully wrote credentials.");
+    }
+    */
   }
 }
 
