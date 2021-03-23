@@ -6,7 +6,7 @@
 #include <WiFiClientSecureBearSSL.h>
 #include <FS.h>
 #include <MD5Builder.h>
-//#include <ArduinoJson.h>
+#include <ArduinoJson.h>
 
 
 //Defines
@@ -18,6 +18,7 @@
 //Global Variables
 MD5Builder _md5;
 ESP8266WebServer server(80);
+String vesyncToken;
 
 String md5(String str) {
   _md5.begin();
@@ -29,19 +30,41 @@ String md5(String str) {
 bool vesyncLogin(String username, String password) {
   String baseJSON = R"({"account": "<email>", "devToken": "", "password": "<password>"})";
   baseJSON.replace("<email>", username);
-  baseJSON.replace("<password>", md5(password));
+  baseJSON.replace("<password>", password);
   
   std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
   secureClient->setInsecure();
   HTTPClient http;
+  
   http.begin(*secureClient, "https://smartapi.vesync.com/vold/user/login");
   http.addHeader("Content-Type", "application/json");
   http.POST(baseJSON);
+
+  DynamicJsonDocument doc(1024);
+  deserializeJson(doc, http.getString());
+  const char* tempToken = doc["tk"];
+  vesyncToken = tempToken;
+  http.end();
+  
   if (http.getString().indexOf("error") > 0) {
     return false;
   } else {
     return true;
-  } 
+  }
+}
+
+
+void turnOutlet(char* verb) {
+  String stringverb = String(verb);
+  String baseURL = "https://smartapi.vesync.com/v1/wifi-switch-1.3//status/";
+  std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
+  secureClient->setInsecure();
+  HTTPClient http;
+  
+  http.begin(*secureClient, baseURL + stringverb);
+  http.addHeader("tk", vesyncToken);
+  int httpResponseCode = http.sendRequest("PUT", "");
+  http.end();
 }
 
 uint16_t find_bell_curve(float total, float index)
@@ -188,6 +211,10 @@ void setup() {
 void loop() {
   server.handleClient();
   MDNS.update();
+
+  if (get_button_state(BUTTON_ONE_SWITCH, BUTTON_ONE_LED)) {
+    turnOutlet("on");
+  }
 }
 
 //web server functions
@@ -203,17 +230,30 @@ void handleDevices() {
 
 void handleCredentials() {
   if (server.hasArg("plain") == false) {
+    //static page
     server.send(200, "text/html", "credentials page without body");  
   } else {
-    if (vesyncLogin(server.arg("username"), server.arg("password"))) {
-      server.send(200, "text/html", "successfully logged into vesync");  
+    String username = server.arg("username");
+    String md5password = md5(server.arg("password"));
+    if (vesyncLogin(username, md5password)) {
+      //successful login
+
+      //create json string
+      String fileJson;
+      DynamicJsonDocument doc(1024);
+      doc["username"] = username;
+      doc["md5password"] = md5password;
+      serializeJson(doc, fileJson);
+      
+      //save json string in file
+      File f = SPIFFS.open("credentials.txt", "w");
+      f.print(fileJson);
+      f.close();
+      
+      server.send(200, "text/html", "successfully logged into vesync");
     } else {
-      
-      String baseJSON = R"({"account": "<email>", "devToken": "", "password": "<password>"})";
-      baseJSON.replace("<email>", server.arg("username"));
-      baseJSON.replace("<password>", md5(server.arg("password")));
-      
-      server.send(200, "text/html", baseJSON);
+      //unsuccessful login
+      server.send(200, "text/html", "unsuccessful vesync login");
     }
     /*
     if (SPIFFS.exists("credentials.txt")) {
