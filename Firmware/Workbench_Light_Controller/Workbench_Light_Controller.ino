@@ -167,10 +167,10 @@ void setup() {
   
   //insert alternate startup mode code here
   while (millis() < 10000) {
-    ESP.wdtFeed();
+    yield();
     unsigned long modeEnterTime = millis();
     while(get_button_state(BUTTON_ONE_SWITCH, BUTTON_ONE_LED)) {
-      ESP.wdtFeed();
+      yield();
       if (millis() > (modeEnterTime + 5000)) {
         enteredWPSMode = true;
         railroad_flash(5);
@@ -200,7 +200,6 @@ void setup() {
     success_flash(2);
   } else {
     while(true) {
-      ESP.wdtFeed(); //is this needed? try taking out
       error_flash();
     }      
   }
