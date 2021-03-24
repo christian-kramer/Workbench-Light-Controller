@@ -14,11 +14,15 @@
 #define BUTTON_ONE_SWITCH 3
 #define BUTTON_TWO_LED 2
 #define WPS_WAIT 10000
+#define CREDENTIAL_FILENAME "/credentials.txt"
 
 //Global Variables
 MD5Builder _md5;
 ESP8266WebServer server(80);
 String vesyncToken;
+HTTPClient http;
+std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
+
 
 String md5(String str) {
   _md5.begin();
@@ -32,9 +36,8 @@ bool vesyncLogin(String username, String password) {
   baseJSON.replace("<email>", username);
   baseJSON.replace("<password>", password);
   
-  std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
-  secureClient->setInsecure();
-  HTTPClient http;
+  //std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
+  //secureClient->setInsecure();
   
   http.begin(*secureClient, "https://smartapi.vesync.com/vold/user/login");
   http.addHeader("Content-Type", "application/json");
@@ -57,9 +60,8 @@ bool vesyncLogin(String username, String password) {
 void turnOutlet(char* verb) {
   String stringverb = String(verb);
   String baseURL = "https://smartapi.vesync.com/v1/wifi-switch-1.3//status/";
-  std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
-  secureClient->setInsecure();
-  HTTPClient http;
+  //std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
+  //secureClient->setInsecure();
   
   http.begin(*secureClient, baseURL + stringverb);
   http.addHeader("tk", vesyncToken);
@@ -192,11 +194,10 @@ void setup() {
   SPIFFS.begin();
   
   //MDNS Setup
-  if (MDNS.begin("esp8266test")) {              // Start the mDNS responder for esp8266test.local
-    Serial.println("mDNS responder started");
-  } else {
-    Serial.println("Error setting up MDNS responder!");
-  }
+  MDNS.begin("esp8266test"); //esp8266test.local
+
+  //secureClient Setup
+  secureClient->setInsecure();
   
   //Web Server Setup
   server.on("/", handleRoot);
@@ -204,6 +205,25 @@ void setup() {
   server.on("/api/credentials", handleCredentials);
   server.onNotFound(handleNotFound);
   server.begin();
+
+  //Login to Vesync with saved credentials (if they exist)
+  if (SPIFFS.exists(CREDENTIAL_FILENAME)) {
+    File f = SPIFFS.open(CREDENTIAL_FILENAME, "r");
+    String credentialsJson;
+    while(f.available()) {
+      char character = f.read();
+      credentialsJson += char(character);
+    }
+    f.close();
+
+    DynamicJsonDocument doc(1024);
+    deserializeJson(doc, credentialsJson);
+    const char* usernameTemp = doc["username"];
+    const char* md5passwordTemp = doc["md5password"];
+    String username = usernameTemp;
+    String md5password = md5passwordTemp;
+    vesyncLogin(username, md5password);
+  }
 
 }
 
@@ -220,7 +240,17 @@ void loop() {
 //web server functions
 void handleDevices() {
   if (server.hasArg("plain") == false) {
-    server.send(200, "text/html", "devices page without body");  
+    
+    //std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
+    //secureClient->setInsecure();
+    
+    http.begin(*secureClient, "https://smartapi.vesync.com/vold/user/devices");
+    http.addHeader("tk", vesyncToken);
+    http.GET();
+    String response = http.getString();
+    http.end();
+    
+    server.send(200, "text/html", response);
   } else {
     String message = "devices page with body: ";
     message += server.arg("plain");
@@ -231,7 +261,11 @@ void handleDevices() {
 void handleCredentials() {
   if (server.hasArg("plain") == false) {
     //static page
-    server.send(200, "text/html", "credentials page without body");  
+    if (SPIFFS.exists(CREDENTIAL_FILENAME)) {
+      server.send(200, "text/html", "credentials file exists");
+    } else {
+      server.send(200, "text/html", "credentials file does not exist");
+    }
   } else {
     String username = server.arg("username");
     String md5password = md5(server.arg("password"));
@@ -246,7 +280,7 @@ void handleCredentials() {
       serializeJson(doc, fileJson);
       
       //save json string in file
-      File f = SPIFFS.open("credentials.txt", "w");
+      File f = SPIFFS.open(CREDENTIAL_FILENAME, "w");
       f.print(fileJson);
       f.close();
       
@@ -255,16 +289,6 @@ void handleCredentials() {
       //unsuccessful login
       server.send(200, "text/html", "unsuccessful vesync login");
     }
-    /*
-    if (SPIFFS.exists("credentials.txt")) {
-      server.send(409, "text/html", "Valid credentials already exist, please reset."); 
-    } else {
-      File f = SPIFFS.open("credentials.txt", "a");
-      f.println("yeet");
-      f.close();
-      server.send(200, "text/html", "Successfully wrote credentials.");
-    }
-    */
   }
 }
 
