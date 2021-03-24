@@ -36,9 +36,6 @@ bool vesyncLogin(String username, String password) {
   baseJSON.replace("<email>", username);
   baseJSON.replace("<password>", password);
   
-  //std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
-  //secureClient->setInsecure();
-  
   http.begin(*secureClient, "https://smartapi.vesync.com/vold/user/login");
   http.addHeader("Content-Type", "application/json");
   http.POST(baseJSON);
@@ -48,25 +45,43 @@ bool vesyncLogin(String username, String password) {
   const char* tempToken = doc["tk"];
   vesyncToken = tempToken;
   http.end();
+
+  return !(doc.containsKey("error"));
+}
+
+bool outletState(char* id) {
+  String baseURL = "https://smartapi.vesync.com/v1/device/<outletid>/detail";
+  baseURL.replace("<outletid>", id);
+  http.begin(*secureClient, baseURL);
+  http.addHeader("tk", vesyncToken);
+  http.GET();
+  DynamicJsonDocument doc(1024);
+  deserializeJson(doc, http.getString());
+  const char* tempState = doc["deviceStatus"];
+  http.end();
   
-  if (http.getString().indexOf("error") > 0) {
-    return false;
-  } else {
-    return true;
-  }
+  return (strcmp(tempState, "on") == 0);
 }
 
 
-void turnOutlet(char* verb) {
-  String stringverb = String(verb);
-  String baseURL = "https://smartapi.vesync.com/v1/wifi-switch-1.3//status/";
-  //std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
-  //secureClient->setInsecure();
+void turnOutlet(char* id, char* verb) {
+  String baseURL = "https://smartapi.vesync.com/v1/wifi-switch-1.3/<outletid>/status/<verb>";
+  baseURL.replace("<outletid>", id);
+  baseURL.replace("<verb>", verb);
   
-  http.begin(*secureClient, baseURL + stringverb);
+  http.begin(*secureClient, baseURL);
   http.addHeader("tk", vesyncToken);
   int httpResponseCode = http.sendRequest("PUT", "");
   http.end();
+}
+
+
+void toggleOutlet(char* id) {
+  if (outletState(id)) {
+    turnOutlet(id, "off");
+  } else {
+    turnOutlet(id, "on");
+  }
 }
 
 uint16_t find_bell_curve(float total, float index)
@@ -233,16 +248,13 @@ void loop() {
   MDNS.update();
 
   if (get_button_state(BUTTON_ONE_SWITCH, BUTTON_ONE_LED)) {
-    turnOutlet("on");
+    toggleOutlet("");
   }
 }
 
 //web server functions
 void handleDevices() {
   if (server.hasArg("plain") == false) {
-    
-    //std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
-    //secureClient->setInsecure();
     
     http.begin(*secureClient, "https://smartapi.vesync.com/vold/user/devices");
     http.addHeader("tk", vesyncToken);
