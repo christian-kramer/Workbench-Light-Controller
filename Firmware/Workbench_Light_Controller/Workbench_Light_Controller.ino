@@ -15,11 +15,18 @@
 #define BUTTON_TWO_LED 2
 #define WPS_WAIT 10000
 #define CREDENTIAL_FILENAME "/credentials.txt"
+#define OUTLET_FILENAME "/outlets.txt"
 
 //Global Variables
 MD5Builder _md5;
 ESP8266WebServer server(80);
 String vesyncToken;
+
+struct OutletIDs {
+  String top;
+  String bottom;
+} outletIDs;
+
 HTTPClient http;
 std::unique_ptr<BearSSL::WiFiClientSecure>secureClient(new BearSSL::WiFiClientSecure);
 
@@ -49,7 +56,7 @@ bool vesyncLogin(String username, String password) {
   return !(doc.containsKey("error"));
 }
 
-bool outletState(char* id) {
+bool outletState(String id) {
   String baseURL = "https://smartapi.vesync.com/v1/device/<outletid>/detail";
   baseURL.replace("<outletid>", id);
   http.begin(*secureClient, baseURL);
@@ -64,7 +71,7 @@ bool outletState(char* id) {
 }
 
 
-void turnOutlet(char* id, char* verb) {
+void turnOutlet(String id, String verb) {
   String baseURL = "https://smartapi.vesync.com/v1/wifi-switch-1.3/<outletid>/status/<verb>";
   baseURL.replace("<outletid>", id);
   baseURL.replace("<verb>", verb);
@@ -76,11 +83,30 @@ void turnOutlet(char* id, char* verb) {
 }
 
 
-void toggleOutlet(char* id) {
+void toggleOutlet(String id) {
   if (outletState(id)) {
     turnOutlet(id, "off");
   } else {
     turnOutlet(id, "on");
+  }
+}
+
+void parseOutletConfig() {
+  if (SPIFFS.exists(OUTLET_FILENAME)) {
+    File f = SPIFFS.open(OUTLET_FILENAME, "r");
+    String outletsJson;
+    while(f.available()) {
+      char character = f.read();
+      outletsJson += char(character);
+    }
+    f.close();
+
+    DynamicJsonDocument doc(1024);
+    deserializeJson(doc, outletsJson);
+    const char* topTemp = doc["top"];
+    const char* bottomTemp = doc["bottom"];
+    outletIDs.top = topTemp;
+    outletIDs.bottom = bottomTemp;
   }
 }
 
@@ -239,6 +265,9 @@ void setup() {
     vesyncLogin(username, md5password);
   }
 
+  //Read outlet configuration file into memory
+  parseOutletConfig();
+
 }
 
 
@@ -247,7 +276,7 @@ void loop() {
   MDNS.update();
 
   if (get_button_state(BUTTON_ONE_SWITCH, BUTTON_ONE_LED)) {
-    toggleOutlet("");
+    toggleOutlet(outletIDs.top);
   }
 }
 
@@ -262,10 +291,24 @@ void handleDevices() {
     http.end();
     
     server.send(200, "text/html", response);
-  } else {
-    String message = "devices page with body: ";
-    message += server.arg("plain");
-    server.send(200, "text/html", message);
+  } else {    
+    //create json string
+    String fileJson;
+    DynamicJsonDocument doc(1024);
+    doc["top"] = server.arg("top");
+    doc["bottom"] = server.arg("bottom");
+    serializeJson(doc, fileJson);
+    
+    //save json string in file
+    File f = SPIFFS.open(OUTLET_FILENAME, "w");
+    f.print(fileJson);
+    f.close();
+
+    
+    outletIDs.top = server.arg("top");
+    outletIDs.bottom = server.arg("bottom");
+    
+    server.send(200, "text/html", "Outlet assignment confirmed");
   }
 }
 
