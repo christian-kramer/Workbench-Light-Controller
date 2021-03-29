@@ -81,11 +81,7 @@ bool turnOutlet(String id, String verb) {
   int httpResponseCode = http.sendRequest("PUT", "");
   http.end();
 
-  if (httpResponseCode > 0) {
-    return 0; //Confusing, I know, but returning "0" on success is what we want.
-  } else {
-    return 1;
-  }
+  return (httpResponseCode == -1); //Confusing, I know, but returning "0" on success is what we want.
 }
 
 
@@ -176,15 +172,13 @@ void success_flash(int requestedAnimationCycles = 1) {
 }
 
 void error_flash(int requestedAnimationCycles = 1) {
-  if (requestedAnimationCycles > 0) {
-    for (int i = 0; i < requestedAnimationCycles; i++) {
-      digitalWrite(BUTTON_ONE_LED, HIGH);
-      digitalWrite(BUTTON_TWO_LED, HIGH);
-      delay(250);
-      digitalWrite(BUTTON_ONE_LED, LOW);
-      digitalWrite(BUTTON_TWO_LED, LOW);
-      delay(250);
-    }
+  for (int i = 0; i < requestedAnimationCycles; i++) {
+    digitalWrite(BUTTON_ONE_LED, HIGH);
+    digitalWrite(BUTTON_TWO_LED, HIGH);
+    delay(250);
+    digitalWrite(BUTTON_ONE_LED, LOW);
+    digitalWrite(BUTTON_TWO_LED, LOW);
+    delay(250);
   }
 }
 
