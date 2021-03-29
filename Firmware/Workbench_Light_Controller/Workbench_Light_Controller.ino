@@ -71,7 +71,7 @@ bool outletState(String id) {
 }
 
 
-void turnOutlet(String id, String verb) {
+bool turnOutlet(String id, String verb) {
   String baseURL = "https://smartapi.vesync.com/v1/wifi-switch-1.3/<outletid>/status/<verb>";
   baseURL.replace("<outletid>", id);
   baseURL.replace("<verb>", verb);
@@ -80,15 +80,31 @@ void turnOutlet(String id, String verb) {
   http.addHeader("tk", vesyncToken);
   int httpResponseCode = http.sendRequest("PUT", "");
   http.end();
+
+  if (httpResponseCode > 0) {
+    return 0; //Confusing, I know, but returning "0" on success is what we want.
+  } else {
+    return 1;
+  }
 }
 
 
-void toggleOutlet(String id) {
+uint8_t toggleOutlet(String id) {
+  String verb;
+
+  if (WiFi.status() != WL_CONNECTED) { return 2; } //not even going to try if no wifi
+  if (vesyncToken == "") { return 3; } //no token, this is a different show-stopping error
+  
   if (outletState(id)) {
-    turnOutlet(id, "off");
+    verb = "off";
   } else {
-    turnOutlet(id, "on");
+    verb = "on";
   }
+
+  if (turnOutlet(id, verb) == 1) {return 4;}
+  
+  
+  return 0; //success
 }
 
 void parseOutletConfig() {
@@ -159,13 +175,17 @@ void success_flash(int requestedAnimationCycles = 1) {
   }
 }
 
-void error_flash() {
-  digitalWrite(BUTTON_ONE_LED, HIGH);
-  digitalWrite(BUTTON_TWO_LED, HIGH);
-  delay(250);
-  digitalWrite(BUTTON_ONE_LED, LOW);
-  digitalWrite(BUTTON_TWO_LED, LOW);
-  delay(250);
+void error_flash(int requestedAnimationCycles = 1) {
+  if (requestedAnimationCycles > 0) {
+    for (int i = 0; i < requestedAnimationCycles; i++) {
+      digitalWrite(BUTTON_ONE_LED, HIGH);
+      digitalWrite(BUTTON_TWO_LED, HIGH);
+      delay(250);
+      digitalWrite(BUTTON_ONE_LED, LOW);
+      digitalWrite(BUTTON_TWO_LED, LOW);
+      delay(250);
+    }
+  }
 }
 
 
@@ -268,6 +288,8 @@ void setup() {
   //Read outlet configuration file into memory
   parseOutletConfig();
 
+  //HTTP Request Timeout
+  //http.setTimeout(5); //5 seconds
 }
 
 
@@ -276,7 +298,7 @@ void loop() {
   MDNS.update();
 
   if (get_button_state(BUTTON_ONE_SWITCH, BUTTON_ONE_LED)) {
-    toggleOutlet(outletIDs.top);
+    error_flash(toggleOutlet(outletIDs.top));
   }
 }
 
