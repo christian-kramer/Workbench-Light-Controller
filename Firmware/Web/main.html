@@ -8,9 +8,20 @@
     <style>
         :root {
             --primary-background:#1E1E1E;
-            --primary-highlight:#CCCCCC;
+            --primary-highlight:lightgrey;
+            --spotlight:hsl(210deg 49% 71% / 60%);
+            --muted: gray;
             --secondary-background:#252526;
             --styled-border:2px solid var(--primary-highlight);
+        }
+
+        ::selection {
+            background: var(--primary-highlight); /* WebKit/Blink Browsers */
+        }
+
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear {
+            filter: invert(50%);
         }
 
         html {
@@ -24,7 +35,7 @@
             display: flex;
             margin: 0;
             height: 100%;
-            background: radial-gradient(ellipse at top, hsl(0deg 0% 27%), var(--primary-background));
+            background: radial-gradient(ellipse at top left, var(--spotlight), var(--primary-background));
         }
 
         h1 {
@@ -49,7 +60,6 @@
             -webkit-appearance: none;
             outline: none;
             color: inherit;
-            border: none;
         }
 
         .window {
@@ -59,19 +69,23 @@
             height: 33vw;
             width: 33vw;
             margin: auto;
-            background: radial-gradient(ellipse at top, hsl(0deg 0% 27%), var(--secondary-background));
-            /* background-color: var(--secondary-background); */
+            background: radial-gradient(ellipse at top left, hsl(0deg 0% 27%), var(--secondary-background));
+            background-color: var(--secondary-background);
             border: var(--styled-border);
             box-shadow: black 0px 10px 30px;
         }
 
         form input {
             text-align: center;
+            align-self: center;
             font-size: larger;
             height: 2em;
-            background-color: var(--secondary-background);
+            background-color: transparent;
             margin-bottom: 1em;
-            box-shadow: inset black 0px 5px 20px 0px;
+            -webkit-text-fill-color: var(--muted);
+            border:none;
+            /*border: 2px solid var(--primary-highlight);*/
+            box-shadow: inset var(--primary-background) 0px 5px 20px 0px;
         }
     </style>
     <script>
@@ -83,8 +97,8 @@
         <div style="margin:auto">
             <h1 class="underlined">Login.</h1>
             <form>
-                <input id="username" type="email" name="username" placeholder="Email Address" autocomplete="email" class="unstyled">
-                <input id="password" type="password" name="password" placeholder="Password" autocomplete="current-password" class="unstyled">
+                <input id="username" type="email" name="username" placeholder="Email Address" autocomplete="off" spellcheck="false" class="unstyled">
+                <input id="password" type="password" name="password" placeholder="Password" autocomplete="current-password" spellcheck="false" class="unstyled">
             </form>
         </div>
     </div>
