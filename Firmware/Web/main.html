@@ -75,30 +75,71 @@
             box-shadow: black 0px 10px 30px;
         }
 
-        form input {
+        form input[type=email], form input[type=password] {
             text-align: center;
             align-self: center;
             font-size: larger;
             height: 2em;
-            background-color: transparent;
+            background-color: #1E1E1E88; 
             margin-bottom: 1em;
             -webkit-text-fill-color: var(--muted);
             border:none;
             /*border: 2px solid var(--primary-highlight);*/
             box-shadow: inset var(--primary-background) 0px 5px 20px 0px;
         }
+
+        form input[type=submit] {
+            text-align: center;
+            align-self: center;
+            font-size: larger;
+            height: 2em;
+            background-color: transparent;
+            border:var(--styled-border);
+            width: -webkit-fill-available;
+            border-radius: 1em;
+            cursor: pointer;
+            transition: 0.25s ease all;
+        }
+
+
+        form input[type=submit]:hover, form input[type=submit]:focus {
+            color: var(--primary-background);
+            background-color: var(--primary-highlight);
+            transform: translateY(-10px);
+            box-shadow: black 0px 10px 30px;
+        }
+
+        form input[type=submit]:active {
+            color: var(--primary-background);
+            background-color: var(--primary-highlight);
+            transform: translateY(-5px);
+            box-shadow: black 0px 5px 15px;
+        }
+        
     </style>
     <script>
-
+        document.addEventListener('DOMContentLoaded', function() {
+            var formElement = document.forms.namedItem("login");
+            var submitElement = formElement.querySelector('input[type=submit]');
+            formElement.addEventListener('submit', function(ev) {
+                var formData = new FormData(formElement);
+                for (var [key, value] of formData.entries()) { 
+                    console.log(key, value);
+                }
+                submitElement.blur(); //otherwise the button just kinda keeps in focus
+                ev.preventDefault();
+            });
+        }, false);
     </script>
 </head>
 <body>
     <div class="window">
         <div style="margin:auto">
             <h1 class="underlined">Login.</h1>
-            <form>
+            <form name="login" enctype="multipart/form-data" method="post">
                 <input id="username" type="email" name="username" placeholder="Email Address" autocomplete="off" spellcheck="false" class="unstyled">
                 <input id="password" type="password" name="password" placeholder="Password" autocomplete="current-password" spellcheck="false" class="unstyled">
+                <input class="unstyled" type="submit" value="Submit">
             </form>
         </div>
     </div>
