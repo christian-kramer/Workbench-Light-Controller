@@ -72,7 +72,10 @@
             background: radial-gradient(ellipse at top left, hsl(0deg 0% 27%), var(--secondary-background));
             background-color: var(--secondary-background);
             border: var(--styled-border);
+            border-radius: 1em;
             box-shadow: black 0px 10px 30px;
+            min-width: 20em;
+            min-height: 20em;
         }
 
         form input[type=email], form input[type=password] {
@@ -123,9 +126,6 @@
             var submitElement = formElement.querySelector('input[type=submit]');
             formElement.addEventListener('submit', function(ev) {
                 var formData = new FormData(formElement);
-                for (var [key, value] of formData.entries()) { 
-                    console.log(key, value);
-                }
                 submitElement.blur(); //otherwise the button just kinda keeps in focus
                 ev.preventDefault();
             });
