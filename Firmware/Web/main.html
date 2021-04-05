@@ -79,6 +79,14 @@
             min-height: 20em;
         }
 
+        form fieldset {
+            display: flex;
+            flex-direction: column;
+            margin: unset;
+            padding: unset;
+            border: unset;
+        }
+
         form input[type=email], form input[type=password] {
             text-align: center;
             align-self: center;
@@ -141,7 +149,7 @@
             transition: var(--primary-transition) opacity;
         }
 
-        .spinner.visible {
+        form fieldset:disabled > .spinner {
             opacity: 1;
             visibility: unset;
         }
@@ -187,31 +195,28 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var loginForm = document.forms.namedItem("login");
-            var emailElement = loginForm.querySelector('input[type=email]');
-            var passwordElement = loginForm.querySelector('input[type=password]');
-            var loginSubmitElement = loginForm.querySelector('input[type=submit]');
-            var loginSpinner = loginForm.querySelector('.spinner');
             loginForm.addEventListener('submit', function(ev) {
-                var formData = new FormData(loginForm);
-                loginSubmitElement.blur(); //otherwise the button just kinda keeps in focus
-                emailElement.disabled = true;
-                passwordElement.disabled = true;
-                loginSubmitElement.disabled = true;
-                loginSpinner.classList.add('visible');
                 ev.preventDefault();
+                var serialFormData = new URLSearchParams(new FormData(loginForm)).toString();
+
+                var loginFieldset = loginForm.querySelector('fieldset');
+                loginFieldset.disabled = true;
+
 
                 var xhr = new XMLHttpRequest();
-                xhr.open("POST", '/api/credentials', true);
+                xhr.open("POST", 'http://esp8266test.local/api/credentials', true);
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
                 xhr.onreadystatechange = function() { // Call a function when the state changes.
                     if (this.readyState === XMLHttpRequest.DONE) {
-                        //loginSpinner.classList.remove('visible');
+                        loginFieldset.disabled = false;
                         if (this.status === 200) {
                             //success
                             console.log(xhr.responseText);
                         }
                     }
                 }
-                xhr.send(formData);
+                
+                xhr.send(serialFormData);
 
             });
         }, false);
@@ -221,11 +226,13 @@
     <div class="window">
         <div style="margin:auto">
             <h1 class="underlined">Login.</h1>
-            <form name="login" enctype="multipart/form-data" method="post">
-                <input id="username" type="email" name="username" placeholder="Email Address" autocomplete="off" spellcheck="false" class="unstyled" required>
-                <input id="password" type="password" name="password" placeholder="Password" autocomplete="current-password" spellcheck="false" class="unstyled" required>
-                <input class="unstyled" type="submit" value="Submit">
-                <div class="spinner"><div class="bounce1"></div><div class="bounce2"></div><div class="bounce3"></div></div>
+            <form name="login">
+                <fieldset>
+                    <input id="username" type="email" name="username" placeholder="Email Address" autocomplete="email" spellcheck="false" class="unstyled" required>
+                    <input id="password" type="password" name="password" placeholder="Password" autocomplete="current-password" spellcheck="false" class="unstyled" required>
+                    <input class="unstyled" type="submit" value="Submit">
+                    <div class="spinner"><div class="bounce1"></div><div class="bounce2"></div><div class="bounce3"></div></div>
+                </fieldset>
             </form>
         </div>
     </div>
