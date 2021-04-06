@@ -80,6 +80,20 @@
             min-height: 20em;
         }
 
+        .centerizer {
+            margin: auto;
+            transition: var(--primary-transition) opacity;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            visibility: hidden;
+        }
+
+        .centerizer.active {
+            opacity: 1;
+            visibility: visible;            
+        }
+
         form fieldset {
             display: flex;
             flex-direction: column;
@@ -194,14 +208,18 @@
         
     </style>
     <script>
+        function nextCenterizer() {
+            var centerizers = document.querySelectorAll('.centerizer');
+            var currentCenterizer = document.querySelector('.centerizer.active');
+        }
         document.addEventListener('DOMContentLoaded', function() {
             var loginForm = document.forms.namedItem("login");
             loginForm.addEventListener('submit', function(ev) {
                 ev.preventDefault();
-                var serialFormData = new URLSearchParams(new FormData(loginForm)).toString();
+                var serialFormData = new URLSearchParams(new FormData(this)).toString();
 
-                var loginFieldset = loginForm.querySelector('fieldset');
-                loginFieldset.disabled = true;
+                var fieldset = this.querySelector('fieldset');
+                fieldset.disabled = true;
 
 
                 var xhr = new XMLHttpRequest();
@@ -209,22 +227,24 @@
                 xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
                 xhr.onreadystatechange = function() { // Call a function when the state changes.
                     if (this.readyState === XMLHttpRequest.DONE) {
-                        loginFieldset.disabled = false;
                         if (this.status === 200) {
                             //success
                             console.log(xhr.responseText);
+                            loginForm.closest('.window').querySelectorAll('.centerizer')
+                        } else {
+                            //failure, present login options again
+                            fieldset.disabled = false;
                         }
                     }
                 }
                 xhr.send(serialFormData);
-
             });
         }, false);
     </script>
 </head>
 <body>
     <div class="window">
-        <div style="margin:auto">
+        <div class="centerizer active">
             <h1 class="underlined">Login.</h1>
             <form name="login">
                 <fieldset>
@@ -233,6 +253,11 @@
                     <input class="unstyled" type="submit" value="Submit">
                     <div class="spinner"><div class="bounce1"></div><div class="bounce2"></div><div class="bounce3"></div></div>
                 </fieldset>
+            </form>
+        </div>
+        <div class="centerizer">
+            <h1 class="underlined">Select Outlets</h1>
+            <form name="devices">
             </form>
         </div>
     </div>
