@@ -36,7 +36,8 @@
             display: flex;
             margin: 0;
             height: 100%;
-            background: radial-gradient(ellipse at top left, var(--spotlight), var(--primary-background));
+            background: radial-gradient(ellipse at top left, var(--spotlight), var(--primary-background)), url(https://www.transparenttextures.com/patterns/brushed-alum.png);
+            background-blend-mode: hard-light;
         }
 
         h1 {
@@ -215,7 +216,6 @@
                         }
                     }
                 }
-                
                 xhr.send(serialFormData);
 
             });
