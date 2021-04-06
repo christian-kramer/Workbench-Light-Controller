@@ -82,16 +82,17 @@
 
         .centerizer {
             margin: auto;
-            transition: var(--primary-transition) opacity;
+            transition: var(--primary-transition) opacity, var(--primary-transition) visibility;
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
+            opacity: 0;
             visibility: hidden;
         }
 
         .centerizer.active {
             opacity: 1;
-            visibility: visible;            
+            visibility: unset;
         }
 
         form fieldset {
@@ -131,7 +132,7 @@
             width: -webkit-fill-available;
             border-radius: 1em;
             cursor: pointer;
-            transition: 0.25s ease all;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
         }
 
 
@@ -211,6 +212,15 @@
         function nextCenterizer() {
             var centerizers = document.querySelectorAll('.centerizer');
             var currentCenterizer = document.querySelector('.centerizer.active');
+            for (let index = 0; index < centerizers.length; index++) {
+                if (centerizers.item(index) == currentCenterizer) {
+                    var nextCenterizer = centerizers.item((index + 1) % centerizers.length);
+                    currentCenterizer.classList.remove('active');
+                    setTimeout(() => {
+                        nextCenterizer.classList.add('active');
+                    }, 500);
+                }
+            }
         }
         document.addEventListener('DOMContentLoaded', function() {
             var loginForm = document.forms.namedItem("login");
@@ -230,7 +240,7 @@
                         if (this.status === 200) {
                             //success
                             console.log(xhr.responseText);
-                            loginForm.closest('.window').querySelectorAll('.centerizer')
+                            nextCenterizer();
                         } else {
                             //failure, present login options again
                             fieldset.disabled = false;
@@ -256,7 +266,7 @@
             </form>
         </div>
         <div class="centerizer">
-            <h1 class="underlined">Select Outlets</h1>
+            <h1 class="underlined">Assign Outlets.</h1>
             <form name="devices">
             </form>
         </div>
