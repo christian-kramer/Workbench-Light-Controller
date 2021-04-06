@@ -132,7 +132,7 @@
             width: -webkit-fill-available;
             border-radius: 1em;
             cursor: pointer;
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            transition: all 0.25s ease;
         }
 
 
@@ -209,15 +209,15 @@
         
     </style>
     <script>
-        function nextCenterizer() {
-            var centerizers = document.querySelectorAll('.centerizer');
-            var currentCenterizer = document.querySelector('.centerizer.active');
-            for (let index = 0; index < centerizers.length; index++) {
-                if (centerizers.item(index) == currentCenterizer) {
-                    var nextCenterizer = centerizers.item((index + 1) % centerizers.length);
-                    currentCenterizer.classList.remove('active');
+        function nextSlide() {
+            var slides = document.querySelectorAll('.centerizer');
+            var currentSlide = document.querySelector('.centerizer.active');
+            for (let index = 0; index < slides.length; index++) {
+                if (slides.item(index) == currentSlide) {
+                    var nextSlide = slides.item((index + 1) % slides.length);
+                    currentSlide.classList.remove('active');
                     setTimeout(() => {
-                        nextCenterizer.classList.add('active');
+                        nextSlide.classList.add('active');
                     }, 500);
                 }
             }
