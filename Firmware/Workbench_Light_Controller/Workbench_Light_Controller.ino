@@ -256,7 +256,7 @@ void setup() {
   //Web Server Setup
   server.on("/", handleRoot);
   server.on("/api/devices", handleDevices);
-  server.on("/api/credentials", handleCredentials);
+  server.on("/api/credentials", HTTP_POST, handleCredentials);
   server.onNotFound(handleNotFound);
   server.begin();
 
@@ -298,7 +298,8 @@ void loop() {
 
 //web server functions
 void handleDevices() {
-  if (server.hasArg("plain") == false) {
+  server.sendHeader("Access-Control-Allow-Origin","*");
+  if (server.method() == HTTP_GET) {
     
     http.begin(*secureClient, "https://smartapi.vesync.com/vold/user/devices");
     http.addHeader("tk", vesyncToken);
@@ -329,36 +330,28 @@ void handleDevices() {
 }
 
 void handleCredentials() {
-  if (server.hasArg("plain") == false) {
-    //static page
-    if (SPIFFS.exists(CREDENTIAL_FILENAME)) {
-      server.send(200, "text/html", "credentials file exists");
-    } else {
-      server.send(200, "text/html", "credentials file does not exist");
-    }
-  } else {
-    String username = server.arg("username");
-    String md5password = md5(server.arg("password"));
-    if (vesyncLogin(username, md5password)) {
-      //successful login
+  server.sendHeader("Access-Control-Allow-Origin","*");
+  String username = server.arg("username");
+  String md5password = md5(server.arg("password"));
+  if (vesyncLogin(username, md5password)) {
+    //successful login
 
-      //create json string
-      String fileJson;
-      DynamicJsonDocument doc(1024);
-      doc["username"] = username;
-      doc["md5password"] = md5password;
-      serializeJson(doc, fileJson);
-      
-      //save json string in file
-      File f = SPIFFS.open(CREDENTIAL_FILENAME, "w");
-      f.print(fileJson);
-      f.close();
-      
-      server.send(200, "text/html", "successfully logged into vesync");
-    } else {
-      //unsuccessful login
-      server.send(200, "text/html", "unsuccessful vesync login");
-    }
+    //create json string
+    String fileJson;
+    DynamicJsonDocument doc(1024);
+    doc["username"] = username;
+    doc["md5password"] = md5password;
+    serializeJson(doc, fileJson);
+    
+    //save json string in file
+    File f = SPIFFS.open(CREDENTIAL_FILENAME, "w");
+    f.print(fileJson);
+    f.close();
+    
+    server.send(200, "text/html", "successfully logged into vesync");
+  } else {
+    //unsuccessful login
+    server.send(401, "text/html", "unsuccessful vesync login");
   }
 }
 
