@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -7,17 +8,18 @@
     <title>Device Homepage</title>
     <style>
         :root {
-            --primary-background:#1E1E1E;
-            --primary-highlight:lightgrey;
-            --spotlight:hsl(210deg 49% 71% / 60%);
+            --primary-background: #1E1E1E;
+            --primary-highlight: lightgrey;
+            --spotlight: hsl(210deg 49% 71% / 60%);
             --muted: gray;
-            --secondary-background:#252526;
-            --styled-border:2px solid var(--primary-highlight);
+            --secondary-background: #252526;
+            --styled-border: 2px solid var(--primary-highlight);
             --primary-transition: 0.5s ease;
         }
 
         ::selection {
-            background: var(--primary-highlight); /* WebKit/Blink Browsers */
+            background: var(--primary-highlight);
+            /* WebKit/Blink Browsers */
         }
 
         input[type="password"]::-ms-reveal,
@@ -54,8 +56,8 @@
         }
 
         .underlined {
-            padding-bottom:5px;
-            border-bottom:var(--styled-border);
+            padding-bottom: 5px;
+            border-bottom: var(--styled-border);
         }
 
         .unstyled {
@@ -103,20 +105,24 @@
             border: unset;
         }
 
-        form input[type=email], form input[type=password] {
+        form input[type=email],
+        form input[type=password],
+        form select {
             text-align: center;
             align-self: center;
             font-size: larger;
             height: 2em;
-            background-color: #1E1E1E88; 
+            background-color: #1E1E1E88;
             margin-bottom: 1em;
             -webkit-text-fill-color: var(--muted);
-            border:none;
+            border: none;
             /*border: 2px solid var(--primary-highlight);*/
             box-shadow: inset var(--primary-background) 0px 5px 20px 0px;
         }
 
-        form input[type=email]:disabled, form input[type=password]:disabled {
+        form input[type=email]:disabled,
+        form input[type=password]:disabled,
+        form select:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transition: var(--primary-transition) opacity;
@@ -128,7 +134,7 @@
             font-size: larger;
             height: 2em;
             background-color: transparent;
-            border:var(--styled-border);
+            border: var(--styled-border);
             width: -webkit-fill-available;
             border-radius: 1em;
             cursor: pointer;
@@ -136,7 +142,8 @@
         }
 
 
-        form input[type=submit]:hover, form input[type=submit]:focus {
+        form input[type=submit]:hover,
+        form input[type=submit]:focus {
             color: var(--primary-background);
             background-color: var(--primary-highlight);
             transform: translateY(-10px);
@@ -155,6 +162,16 @@
             transition: var(--primary-transition) opacity;
         }
 
+        form select {
+            -webkit-appearance: auto!important;
+            width: -webkit-fill-available;
+            text-align-last: center;
+        }
+
+        form select option:hover {
+            background-color: var(--primary-background);
+        }
+
         .spinner {
             position: relative;
             margin: auto;
@@ -165,12 +182,12 @@
             transition: var(--primary-transition) opacity;
         }
 
-        form fieldset:disabled > .spinner {
+        form fieldset:disabled>.spinner {
             opacity: 1;
             visibility: unset;
         }
 
-        .spinner > div {
+        .spinner>div {
             width: 1em;
             height: 1em;
             background-color: var(--primary-highlight);
@@ -193,22 +210,64 @@
         }
 
         @-webkit-keyframes sk-bouncedelay {
-            0%, 80%, 100% { -webkit-transform: scale(0) }
-            40% { -webkit-transform: scale(1.0) }
+
+            0%,
+            80%,
+            100% {
+                -webkit-transform: scale(0)
+            }
+
+            40% {
+                -webkit-transform: scale(1.0)
+            }
         }
 
         @keyframes sk-bouncedelay {
-            0%, 80%, 100% { 
+
+            0%,
+            80%,
+            100% {
                 -webkit-transform: scale(0);
                 transform: scale(0);
-            } 40% { 
+            }
+
+            40% {
                 -webkit-transform: scale(1.0);
                 transform: scale(1.0);
             }
         }
-        
     </style>
     <script>
+        function populateOutlets() {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", 'http://esp8266test.local/api/devices', true);
+            xhr.onreadystatechange = function () { // Call a function when the state changes.
+                if (this.readyState === XMLHttpRequest.DONE) {
+                    if (this.status === 200) {
+                        //success
+                        console.log(xhr.responseText);
+                        var outletForm = document.forms.namedItem("devices");
+                        var outletData = JSON.parse(xhr.responseText);
+                        outletData.forEach(thisOutlet => {
+                            console.log(thisOutlet.deviceName);
+                            outletForm.querySelectorAll('select').forEach(thisSelect => {
+                                var outletOption = document.createElement('option');
+                                outletOption.innerText = thisOutlet.deviceName;
+                                outletOption.setAttribute('value', thisOutlet.cid);
+                                thisSelect.appendChild(outletOption);
+                            });
+                        });
+
+                        nextSlide();
+                    } else {
+                        //failure
+                        console.log('could not populate outlets');
+                    }
+                }
+            }
+            xhr.send();
+        }
+
         function nextSlide() {
             var slides = document.querySelectorAll('.centerizer');
             var currentSlide = document.querySelector('.centerizer.active');
@@ -222,54 +281,88 @@
                 }
             }
         }
-        document.addEventListener('DOMContentLoaded', function() {
-            var loginForm = document.forms.namedItem("login");
-            loginForm.addEventListener('submit', function(ev) {
-                ev.preventDefault();
-                var serialFormData = new URLSearchParams(new FormData(this)).toString();
 
-                var fieldset = this.querySelector('fieldset');
-                fieldset.disabled = true;
+        function submitForm(endpoint, ev, successCallback) {
+            ev.preventDefault();
+            var serialFormData = new URLSearchParams(new FormData(ev.target)).toString();
+
+            var fieldset = ev.target.querySelector('fieldset');
+            fieldset.disabled = true;
 
 
-                var xhr = new XMLHttpRequest();
-                xhr.open("POST", 'http://esp8266test.local/api/credentials', true);
-                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                xhr.onreadystatechange = function() { // Call a function when the state changes.
-                    if (this.readyState === XMLHttpRequest.DONE) {
-                        if (this.status === 200) {
-                            //success
-                            console.log(xhr.responseText);
-                            nextCenterizer();
-                        } else {
-                            //failure, present login options again
-                            fieldset.disabled = false;
-                        }
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", 'http://esp8266test.local/api/' + endpoint, true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onreadystatechange = function () { // Call a function when the state changes.
+                if (this.readyState === XMLHttpRequest.DONE) {
+                    if (this.status === 200) {
+                        //success
+                        console.log(xhr.responseText);
+                        successCallback();
+                    } else {
+                        //failure, present login options again
+                        fieldset.disabled = false;
                     }
                 }
-                xhr.send(serialFormData);
-            });
+            }
+            xhr.send(serialFormData);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var loginForm = document.forms.namedItem("login");
+            loginForm.addEventListener('submit', function (ev) { submitForm('credentials', ev, function () {
+                populateOutlets();
+            })});
+
+            var devicesForm = document.forms.namedItem("devices");
+            devicesForm.addEventListener('submit', function (ev) { submitForm('devices', ev, function () {
+                alert('yeeeet!');
+            })});
         }, false);
     </script>
 </head>
+
 <body>
     <div class="window">
         <div class="centerizer active">
             <h1 class="underlined">Login.</h1>
             <form name="login">
                 <fieldset>
-                    <input id="username" type="email" name="username" placeholder="Email Address" autocomplete="email" spellcheck="false" class="unstyled" required>
-                    <input id="password" type="password" name="password" placeholder="Password" autocomplete="current-password" spellcheck="false" class="unstyled" required>
+                    <input id="username" type="email" name="username" placeholder="Email Address" autocomplete="email"
+                        spellcheck="false" class="unstyled" required>
+                    <input id="password" type="password" name="password" placeholder="Password"
+                        autocomplete="current-password" spellcheck="false" class="unstyled" required>
                     <input class="unstyled" type="submit" value="Submit">
-                    <div class="spinner"><div class="bounce1"></div><div class="bounce2"></div><div class="bounce3"></div></div>
+                    <div class="spinner">
+                        <div class="bounce1"></div>
+                        <div class="bounce2"></div>
+                        <div class="bounce3"></div>
+                    </div>
                 </fieldset>
             </form>
         </div>
         <div class="centerizer">
             <h1 class="underlined">Assign Outlets.</h1>
             <form name="devices">
+                <fieldset>
+                    <label for="top">Top Outlet:</label>
+                    <select name="top" id="topOutlet" class="unstyled">
+                        <option value="none" selected disabled hidden>Choose an Outlet</option>
+                    </select>
+                    <label for="bottom">Bottom Outlet:</label>
+                    <select name="bottom" id="bottomOutlet" class="unstyled">
+                        <option value="none" selected disabled hidden>Choose an Outlet</option>
+                    </select>
+                    <input class="unstyled" type="submit" value="Apply">
+                    <div class="spinner">
+                        <div class="bounce1"></div>
+                        <div class="bounce2"></div>
+                        <div class="bounce3"></div>
+                    </div>
+                </fieldset>
             </form>
         </div>
     </div>
 </body>
+
 </html>
