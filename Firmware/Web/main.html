@@ -172,6 +172,11 @@
             background-color: var(--primary-background);
         }
 
+        form label {
+            font-size: x-large;
+            text-align: center;
+        }
+
         .spinner {
             position: relative;
             margin: auto;
@@ -316,7 +321,9 @@
 
             var devicesForm = document.forms.namedItem("devices");
             devicesForm.addEventListener('submit', function (ev) { submitForm('devices', ev, function () {
-                alert('yeeeet!');
+                setTimeout(() => {
+                    devicesForm.querySelector('fieldset').disabled = false;
+                }, 1000);
             })});
         }, false);
     </script>
