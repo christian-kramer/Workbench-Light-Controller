@@ -13,6 +13,7 @@
 #define BUTTON_ONE_LED 1
 #define BUTTON_ONE_SWITCH 3
 #define BUTTON_TWO_LED 2
+#define BUTTON_TWO_SWITCH 0
 #define WPS_WAIT 10000
 #define CREDENTIAL_FILENAME "/credentials.txt"
 #define OUTLET_FILENAME "/outlets.txt"
@@ -197,6 +198,7 @@ void setup() {
   pinMode(BUTTON_ONE_LED, OUTPUT); //transmit, builtin LED
   pinMode(BUTTON_TWO_LED, OUTPUT); //nothing special
   pinMode(BUTTON_ONE_SWITCH, INPUT); //recieve, only input that can be driven during boot
+  pinMode(BUTTON_TWO_SWITCH, INPUT); //recieve, only input that can be driven during boot
   analogWrite(BUTTON_ONE_LED, 0);
   analogWrite(BUTTON_TWO_LED, 0);
   
@@ -293,6 +295,10 @@ void loop() {
 
   if (get_button_state(BUTTON_ONE_SWITCH, BUTTON_ONE_LED)) {
     error_flash(toggleOutlet(outletIDs.top));
+  }
+  
+  if (get_button_state(BUTTON_TWO_SWITCH, BUTTON_TWO_LED)) {
+    error_flash(toggleOutlet(outletIDs.bottom));
   }
 }
 
