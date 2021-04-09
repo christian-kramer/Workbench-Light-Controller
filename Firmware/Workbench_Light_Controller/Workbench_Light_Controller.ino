@@ -293,12 +293,26 @@ void loop() {
   server.handleClient();
   MDNS.update();
 
-  if (get_button_state(BUTTON_ONE_SWITCH, BUTTON_ONE_LED)) {
-    error_flash(toggleOutlet(outletIDs.top));
-  }
-  
-  if (get_button_state(BUTTON_TWO_SWITCH, BUTTON_TWO_LED)) {
-    error_flash(toggleOutlet(outletIDs.bottom));
+  if (get_button_state(BUTTON_ONE_SWITCH, BUTTON_ONE_LED) || get_button_state(BUTTON_TWO_SWITCH, BUTTON_TWO_LED)) {
+    bool button_one_bool = false;
+    bool button_two_bool = false;
+    unsigned long buttonPressedTime = millis();
+    while (millis() < (buttonPressedTime + 250)) {
+      button_one_bool = button_one_bool | (!digitalRead(BUTTON_ONE_SWITCH));
+      analogWrite(BUTTON_ONE_LED, button_one_bool * 512);
+      button_two_bool = button_two_bool | (!digitalRead(BUTTON_TWO_SWITCH));
+      analogWrite(BUTTON_TWO_LED, button_two_bool * 512);
+    }
+
+    if (button_one_bool) {
+      error_flash(toggleOutlet(outletIDs.top));
+      digitalWrite(BUTTON_ONE_LED, LOW);
+    }
+    
+    if (button_two_bool) {
+      error_flash(toggleOutlet(outletIDs.bottom));
+      digitalWrite(BUTTON_TWO_LED, LOW);
+    }
   }
 }
 
