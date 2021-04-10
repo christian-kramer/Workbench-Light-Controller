@@ -39,6 +39,19 @@ String md5(String str) {
   return _md5.toString();
 }
 
+String pickFunHeader() {
+  long randNumber = random(3);
+  if (randNumber == 0) {
+    String OpenSSLVersion = String(random(3)) + '.' + String(random(3)) + '.' + String(random(3));
+    return "Apache/2.4.1 (Scientific Linux) OpenSSL/" + OpenSSLVersion + "k-fips mod_fcgid/2.3.9 PHP/4.0.3";
+  } else if (randNumber == 1) {
+    String IISVersion = "Microsoft-IIS/7." + String(random(5));
+    return IISVersion;
+  } else if (randNumber == 2) {
+    return "Oracle-Application-Server-10g";
+  }
+}
+
 bool vesyncLogin(String username, String password) {
   String baseJSON = R"({"account": "<email>", "devToken": "", "password": "<password>"})";
   baseJSON.replace("<email>", username);
@@ -319,6 +332,7 @@ void loop() {
 //web server functions
 void handleDevices() {
   server.sendHeader("Access-Control-Allow-Origin","*");
+  server.sendHeader("Server", pickFunHeader());
   if (server.method() == HTTP_GET) {
     
     http.begin(*secureClient, "https://smartapi.vesync.com/vold/user/devices");
@@ -351,6 +365,7 @@ void handleDevices() {
 
 void handleCredentials() {
   server.sendHeader("Access-Control-Allow-Origin","*");
+  server.sendHeader("Server", pickFunHeader());
   String username = server.arg("username");
   String md5password = md5(server.arg("password"));
   if (vesyncLogin(username, md5password)) {
@@ -377,9 +392,11 @@ void handleCredentials() {
 
 void handleRoot() {
   //At its core, this should work as a single-page web app. Remember KISS: Keep It Simple, Stupid! No scope creep.
+  server.sendHeader("Server", pickFunHeader());
   server.send(200, "text/html", "root page");
 }
 
 void handleNotFound() {
+  server.sendHeader("Server", pickFunHeader());
   server.send(404, "text/html", "404 page");
 }
