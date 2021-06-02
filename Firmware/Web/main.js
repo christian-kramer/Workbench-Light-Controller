@@ -70,20 +70,26 @@ function submitForm(endpoint, ev, successCallback) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    alert('this is the javascript dom content loaded eventlistener');
-    var loginForm = document.forms.namedItem("login");
-    loginForm.addEventListener('submit', function (ev) {
-        submitForm('credentials', ev, function () {
-            populateOutlets();
-        })
-    });
+    fetch("https://cdn.jsdelivr.net/gh/christian-kramer/Workbench-Light-Controller/Firmware/Web/main.html").then(res => {
+        res.text().then((text) => {
+            document.querySelector('HTML').innerHTML = text;
+            
+            var loginForm = document.forms.namedItem("login");
+            loginForm.addEventListener('submit', function (ev) {
+                submitForm('credentials', ev, function () {
+                    populateOutlets();
+                })
+            });
 
-    var devicesForm = document.forms.namedItem("devices");
-    devicesForm.addEventListener('submit', function (ev) {
-        submitForm('devices', ev, function () {
-            setTimeout(() => {
-                devicesForm.querySelector('fieldset').disabled = false;
-            }, 1000);
-        })
+            var devicesForm = document.forms.namedItem("devices");
+            devicesForm.addEventListener('submit', function (ev) {
+                submitForm('devices', ev, function () {
+                    setTimeout(() => {
+                        devicesForm.querySelector('fieldset').disabled = false;
+                    }, 1000);
+                })
+            });
+        });
     });
+    
 }, false);
