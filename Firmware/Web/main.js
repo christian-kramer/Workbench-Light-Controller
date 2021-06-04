@@ -1,95 +1,119 @@
 
-function populateOutlets() {
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", 'http://esp8266test.local/api/devices', true);
-    xhr.onreadystatechange = function () { // Call a function when the state changes.
-        if (this.readyState === XMLHttpRequest.DONE) {
-            if (this.status === 200) {
-                //success
-                console.log(xhr.responseText);
-                var outletForm = document.forms.namedItem("devices");
-                var outletData = JSON.parse(xhr.responseText);
-                outletData.forEach(thisOutlet => {
-                    console.log(thisOutlet.deviceName);
-                    outletForm.querySelectorAll('select').forEach(thisSelect => {
-                        var outletOption = document.createElement('option');
-                        outletOption.innerText = thisOutlet.deviceName;
-                        outletOption.setAttribute('value', thisOutlet.cid);
-                        thisSelect.appendChild(outletOption);
-                    });
-                });
-
-                nextSlide();
-            } else {
-                //failure
-                console.log('could not populate outlets');
-            }
-        }
-    }
-    xhr.send();
-}
-
-function nextSlide() {
-    var slides = document.querySelectorAll('.centerizer');
-    var currentSlide = document.querySelector('.centerizer.active');
-    for (let index = 0; index < slides.length; index++) {
-        if (slides.item(index) == currentSlide) {
-            var nextSlide = slides.item((index + 1) % slides.length);
-            currentSlide.classList.remove('active');
-            setTimeout(() => {
-                nextSlide.classList.add('active');
-            }, 500);
-        }
-    }
-}
-
-function submitForm(endpoint, ev, successCallback) {
-    ev.preventDefault();
-    var serialFormData = new URLSearchParams(new FormData(ev.target)).toString();
-
-    var fieldset = ev.target.querySelector('fieldset');
-    fieldset.disabled = true;
+'use strict';
 
 
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", 'http://esp8266test.local/api/' + endpoint, true);
-    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-    xhr.onreadystatechange = function () { // Call a function when the state changes.
-        if (this.readyState === XMLHttpRequest.DONE) {
-            if (this.status === 200) {
-                //success
-                console.log(xhr.responseText);
-                successCallback();
-            } else {
-                //failure, present login options again
-                fieldset.disabled = false;
-            }
-        }
-    }
-    xhr.send(serialFormData);
-}
+cliento($ => {
+    const cdn = 'https://esp8266test.local/api/';
 
-document.addEventListener('DOMContentLoaded', function () {
-    fetch("https://cdn.jsdelivr.net/gh/christian-kramer/Workbench-Light-Controller/Firmware/Web/main.html").then(res => {
-        res.text().then((text) => {
-            document.querySelector('HTML').innerHTML = text;
+    (_body => {
+        (_devices => {
+            const outlets = [];
+            _devices._('h1', 'Assign Outlets');
             
-            var loginForm = document.forms.namedItem("login");
-            loginForm.addEventListener('submit', function (ev) {
-                submitForm('credentials', ev, function () {
-                    populateOutlets();
-                })
-            });
+            (_form => {
+                (_fields => {
+                    populate(_fields._('label', { for: 'top' }, 'Top Outlet:')._('select', { id: 'top', name: 'top' }));
+                    populate(_fields._('label', { for: 'bottom' }, 'Bottom Outlet:')._('select', { id: 'bottom', name: 'bottom' }));
 
-            var devicesForm = document.forms.namedItem("devices");
-            devicesForm.addEventListener('submit', function (ev) {
-                submitForm('devices', ev, function () {
-                    setTimeout(() => {
-                        devicesForm.querySelector('fieldset').disabled = false;
-                    }, 1000);
-                })
+                    $submit(_fields, _form, 'Apply', () => {
+                        const data = new URLSearchParams(new FormData(_form));
+                        console.log(data.toString());
+                    });
+
+                    function populate(_outlet) {
+                        _outlet._('option', { value: 'none', selected: true, disabled: true, hidden: true }, 'Choose an Outlet');
+                        outlets.push(_outlet);
+                    }
+                })(_form._('fieldset.&col'));
+            })(_devices._('form'));
+
+            _body.removeChild(_devices);
+
+            (_login => {
+                _login._('h1', 'Login.');
+
+                (_form => {
+                    (_fields => {
+                        _fields._('label', {for: 'username'})._('input', {
+                            id: 'username',
+                            type: 'email',
+                            name: 'username',
+                            placeholder: 'Email Address',
+                            autocomplete: 'email',
+                            spellcheck: false,
+                            required: true
+                        });
+
+                        _fields._('label', {for: 'password'})._('input', {
+                            id: 'password',
+                            type: 'password',
+                            name: 'password',
+                            placeholder: 'Password',
+                            autocomplete: 'current-password',
+                            spellcheck: false,
+                            required: true
+                        });
+
+                        $submit(_fields, _form, 'Submit', failed => {
+                            const body = new URLSearchParams(new FormData(_form));
+
+                            fetch(cdn, {
+                                method: 'POST',
+                                mode: 'cors',
+                                cache: 'no-cache',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                referrerPolicy: 'no-referrer',
+                                body
+                            }).then(response => {
+                                if (response.ok) {
+                                    fetch(cdn + 'devices').then(response => {
+                                        if (response.ok) {
+                                            response.json().then(devices => {
+                                                outlets.forEach(_outlet => {
+                                                    devices.forEach(the => {
+                                                        _outlet._('option', {value: the.deviceID}, the.deviceName);
+                                                    });
+                                                });
+                                            });
+                                        }
+                                    });
+
+                                    response.text().then(text => {
+                                        _body.removeChild(_login);
+                                        _body.appendChild(_devices);
+                                    });
+                                } else {
+                                    console.log('failed');
+                                    failed();
+                                }
+                            });
+                        });
+                    })(_form._('fieldset.flexcol'));
+                })(_login._('form', { name: 'login' }));
+            })(_body._('main.login.flexcol'));
+        })(_body._('main.devices.flexcol'));
+    })($('body'));
+});
+
+
+function $submit(_host, _form, name, submit) {
+    ((_submit, _spinner, nodes, index = 0) => {
+        while (nodes--) _spinner._('b', { style: { 'animation-delay': index++ * 100 + 'ms' } });
+        _host.removeChild(_spinner);
+
+        _form.addEventListener('submit', event => {
+            event.preventDefault();
+
+            _host.removeChild(_submit);
+            _host.appendChild(_spinner);
+
+            submit(() => {
+                _host.removeChild(_spinner);
+                _host.appendChild(_submit);
             });
         });
-    });
-    
-}, false);
+    })(_host._('button', name), _host._('div.spinner'), 3);
+}
