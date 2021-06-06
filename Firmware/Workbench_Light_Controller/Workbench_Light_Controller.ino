@@ -17,6 +17,7 @@
 #define WPS_WAIT 10000
 #define CREDENTIAL_FILENAME "/credentials.txt"
 #define OUTLET_FILENAME "/outlets.txt"
+//#define JS_DISTRIBUTION_URL "https://cdn.jsdelivr.net/gh/christian-kramer/Workbench-Light-Controller/Firmware/Web/main.html"
 
 //Global Variables
 MD5Builder _md5;
@@ -392,8 +393,8 @@ void handleCredentials() {
 
 void handleRoot() {
   //At its core, this should work as a single-page web app. Remember KISS: Keep It Simple, Stupid! No scope creep.
-  server.sendHeader("Server", pickFunHeader());
-  server.send(200, "text/html", "root page");
+
+  server.send(200, "text/html", F("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>Device Homepage</title><base href=\"https://cdn.jsdelivr.net/gh/christian-kramer/Workbench-Light-Controller/Firmware/Web/\"><link rel=\"stylesheet\" href=\"main.css\"><script src=\"cliento.js\"></script><script src=\"main.js\"></script></head><body></body></html>"));
 }
 
 void handleNotFound() {
