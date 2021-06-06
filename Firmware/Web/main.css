@@ -49,7 +49,7 @@ h1 {
 }
 
 form {
-  width: 80%;
+  /* width: 80%; */
   flex-shrink: 0;
 }
 
@@ -88,6 +88,8 @@ select {
   outline: none;
   align-self: center;
   -webkit-text-fill-color: var(--muted);
+  padding: 0;
+  text-align: center;
 }
 
 button:disabled,
