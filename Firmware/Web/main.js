@@ -3,7 +3,7 @@
 
 
 cliento($ => {
-    const cdn = 'https://esp8266test.local/api/';
+    const cdn = 'http://esp8266test.local/api/';
 
     (_body => {
         (_devices => {
@@ -15,9 +15,30 @@ cliento($ => {
                     populate(_fields._('label', { for: 'top' }, 'Top Outlet:')._('select', { id: 'top', name: 'top' }));
                     populate(_fields._('label', { for: 'bottom' }, 'Bottom Outlet:')._('select', { id: 'bottom', name: 'bottom' }));
 
-                    $submit(_fields, _form, 'Apply', () => {
-                        const data = new URLSearchParams(new FormData(_form));
-                        console.log(data.toString());
+                    $submit(_fields, _form, 'Apply', complete => {
+                        const body = new URLSearchParams(new FormData(_form));
+
+                        fetch(cdn + 'devices', {
+                            method: 'POST',
+                            mode: 'cors',
+                            cache: 'no-cache',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            referrerPolicy: 'no-referrer',
+                            body
+                        }).then(response => {
+                            if (response.ok) {
+                                response.text().then(text => {
+                                    console.log(text);
+                                });
+                            } else {
+                                console.log('failed');
+                            }
+                            
+                            complete();
+                        });
                     });
 
                     function populate(_outlet) {
@@ -54,10 +75,10 @@ cliento($ => {
                             required: true
                         });
 
-                        $submit(_fields, _form, 'Submit', failed => {
+                        $submit(_fields, _form, 'Submit', complete => {
                             const body = new URLSearchParams(new FormData(_form));
 
-                            fetch(cdn, {
+                            fetch(cdn + 'credentials', {
                                 method: 'POST',
                                 mode: 'cors',
                                 cache: 'no-cache',
@@ -74,7 +95,7 @@ cliento($ => {
                                             response.json().then(devices => {
                                                 outlets.forEach(_outlet => {
                                                     devices.forEach(the => {
-                                                        _outlet._('option', {value: the.deviceID}, the.deviceName);
+                                                        _outlet._('option', {value: the.cid}, the.deviceName);
                                                     });
                                                 });
                                             });
@@ -87,8 +108,9 @@ cliento($ => {
                                     });
                                 } else {
                                     console.log('failed');
-                                    failed();
                                 }
+
+                                complete();
                             });
                         });
                     })(_form._('fieldset.flexcol'));
